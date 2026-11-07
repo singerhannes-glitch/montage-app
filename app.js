@@ -81,14 +81,22 @@ function prefilled(type) {
   return r;
 }
 
+// Ueberschriften im Editor folgen der Berichtssprache (Texte, die du tippst, bleiben wie getippt; uebersetzt wird nur mit KI)
+function applyLangLabels() {
+  const L = LABELS[R.lang] || LABELS.de;
+  document.querySelectorAll('[data-l]').forEach(h => { h.textContent = L[h.dataset.l]; });
+  $('h-bilder').textContent = R.type === 'punch' ? L.p2 : L.s4;
+  const p1 = document.querySelector('#part-punch h3'); if (p1) p1.textContent = L.p1;
+}
+
 // ---------- Editor zeichnen ----------
 function renderAll() {
   const isPunch = R.type === 'punch';
   $('part-bericht').hidden = isPunch;
   $('part-punch').hidden = !isPunch;
   $('btn-copy').hidden = isPunch;
-  $('h-bilder').textContent = isPunch ? '2. Bilder' : '4. Bilder';
   $('lang').value = R.lang;
+  applyLangLabels();
   renderProjectSelect();
   $('f-firma').value = R.firma;
   $('f-projekt').value = R.projekt;
@@ -392,7 +400,11 @@ function bindFields() {
     R.lang = $('lang').value;
     R.polished = false;
     touch();
-    msg(R.lang === 'en' ? 'Bericht wird auf Englisch ausgegeben. Zum Übersetzen deiner Texte „Professionell formulieren“ drücken.' : 'Bericht wird auf Deutsch ausgegeben.', '');
+    applyLangLabels();
+    const ki = !!(Settings.data.apiKey || '').trim();
+    msg(R.lang === 'en'
+      ? 'Überschriften und Beschriftungen im Bericht sind jetzt englisch. ' + (ki ? 'Deine Texte übersetzt „Professionell formulieren“.' : 'Deine eigenen Texte bleiben so, wie du sie getippt hast. Bitte gleich auf Englisch schreiben, übersetzen kann die App offline nicht.')
+      : 'Bericht wird auf Deutsch ausgegeben.', '');
   });
   $('add-hm').addEventListener('click', () => { R.hilfsmittel.push({ text: '', stk: '' }); touch(); renderHm(); });
   $('add-team').addEventListener('click', () => { R.team.push({ rolle: '', vm: '', nm: '' }); touch(); renderTeam(); });
