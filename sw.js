@@ -1,7 +1,7 @@
 // Offline-Cache der Montage-App. Bei jeder Aenderung an den Dateien VERSION hochzaehlen.
-const VERSION = 'montage-v3';
+const VERSION = 'montage-v4';
 const DATEIEN = [
-  './', 'index.html', 'style.css', 'app.js', 'ai.js', 'store.js', 'i18n.js',
+  './', 'index.html', 'style.css', 'app.js', 'ai.js', 'store.js', 'i18n.js', 'ui-en.js',
   'export-pdf.js', 'export-xlsx.js', 'libs/jspdf.umd.min.js', 'libs/exceljs.min.js',
   'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'
 ];

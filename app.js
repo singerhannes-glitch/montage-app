@@ -9,7 +9,8 @@ function el(tag, props, children) {
   const e = document.createElement(tag);
   Object.entries(props || {}).forEach(([k, v]) => {
     if (k === 'class') e.className = v;
-    else if (k === 'text') e.textContent = v;
+    else if (k === 'text') e.textContent = tr(v);
+    else if (k === 'placeholder' || k === 'title') e.setAttribute(k, tr(v));
     else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
     else if (v !== false && v != null) e.setAttribute(k, v === true ? '' : v);
   });
@@ -27,7 +28,7 @@ function origLine(obj, key, redraw) {
 
 function msg(text, kind) {
   const m = $('msg');
-  m.textContent = text || '';
+  m.textContent = tr(text || '');
   m.className = 'msg' + (kind ? ' ' + kind : '');
 }
 
@@ -35,15 +36,15 @@ function msg(text, kind) {
 function touch() {
   R.updated = Date.now();
   if (pendingShare) { pendingShare = null; $('btn-share').hidden = true; } // geaenderter Bericht: alte Dateien nicht mehr anbieten
-  $('autosave').textContent = 'Änderungen …';
+  $('autosave').textContent = tr('Änderungen …');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
       await Store.saveReport(R);
       await Store.setKv('last:' + R.type, R.id);
-      $('autosave').textContent = 'Entwurf gespeichert';
+      $('autosave').textContent = tr('Entwurf gespeichert');
     } catch (e) {
-      $('autosave').textContent = 'Entwurf konnte nicht gespeichert werden';
+      $('autosave').textContent = tr('Entwurf konnte nicht gespeichert werden');
     }
   }, 500);
 }
@@ -70,15 +71,17 @@ async function openTab(tab) {
       msg('Du bearbeitest den Eintrag vom ' + isoToDe(R.datum) + '. Für einen neuen Tag „Neu“ drücken (bei Montageberichten auch „Neuer Tag aus diesem“). Sonst entsteht beim Speichern eine weitere Datei mit „(2)“ im Namen.', '');
     }
   } else if (tab === 'liste') {
-    renderList();
+    await renderList();
   } else {
     renderSettings();
   }
+  applyUi();
 }
 
 function prefilled(type) {
   const r = emptyReport(type);
   r.monteur = Settings.data.monteur || '';
+  r.lang = UI_LANG;
   return r;
 }
 
@@ -113,6 +116,7 @@ function renderAll() {
   renderItems('taetigkeiten'); renderItems('geplant'); renderItems('hinweise'); renderItems('punkte');
   renderBilder();
   renderNotes();
+  applyUi();
 }
 
 function renderWetterOrig() {
@@ -191,7 +195,7 @@ function renderItems(listKey) {
     if (listKey === 'taetigkeiten' || listKey === 'punkte') {
       const sel = el('select', {}, []);
       const opts = listKey === 'taetigkeiten' ? ['progress', 'done'] : ['open', 'done'];
-      opts.forEach(o => sel.appendChild(el('option', { value: o, text: LABELS.de[o] })));
+      opts.forEach(o => sel.appendChild(el('option', { value: o, text: (LABELS[R.lang] || LABELS.de)[o] })));
       sel.value = it.status;
       const paint = () => { wrap.classList.remove('sel-done', 'sel-progress', 'sel-open'); wrap.classList.add('sel-' + sel.value); };
       sel.addEventListener('change', () => { it.status = sel.value; paint(); touch(); });
@@ -208,7 +212,7 @@ function renderItems(listKey) {
       const cb = el('input', { type: 'checkbox' });
       cb.checked = !!it.wichtig;
       cb.addEventListener('change', () => { it.wichtig = cb.checked; touch(); });
-      line.appendChild(el('label', { class: 'check' }, [cb, document.createTextNode('wichtig (rot)')]));
+      line.appendChild(el('label', { class: 'check' }, [cb, document.createTextNode(tr('wichtig (rot)'))]));
     }
     line.appendChild(el('button', { class: 'x', title: 'Zeile löschen', text: '×', onclick: () => {
       R[listKey].splice(i, 1); R.notes = [];
@@ -224,7 +228,7 @@ function renderItems(listKey) {
       wrap.appendChild(o);
     }
     const note = noteFor(listKey, i);
-    if (note) wrap.appendChild(el('div', { class: 'note', text: '⚠ Rückfrage: ' + note }));
+    if (note) wrap.appendChild(el('div', { class: 'note', text: tr('⚠ Rückfrage: ') + note }));
     box.appendChild(wrap);
     setTimeout(grow, 0);
   });
@@ -399,12 +403,13 @@ function bindFields() {
   });
   $('lang').addEventListener('change', () => {
     R.lang = $('lang').value;
+    setUiLang(R.lang);
     R.polished = false;
     touch();
-    applyLangLabels();
+    renderAll();
     const ki = !!(Settings.data.apiKey || '').trim();
     msg(R.lang === 'en'
-      ? 'Überschriften und Beschriftungen im Bericht sind jetzt englisch. ' + (ki ? 'Deine Texte übersetzt „Professionell formulieren“.' : 'Deine eigenen Texte bleiben so, wie du sie getippt hast. Bitte gleich auf Englisch schreiben, übersetzen kann die App offline nicht.')
+      ? 'The app and the report are now in English. ' + (ki ? 'Your own texts are translated by “Polish wording”.' : 'Your own texts stay as you typed them. Please write them in English, the app cannot translate them offline.')
       : 'Bericht wird auf Deutsch ausgegeben.', '');
   });
   $('add-hm').addEventListener('click', () => { R.hilfsmittel.push({ text: '', stk: '' }); touch(); renderHm(); });
@@ -586,7 +591,7 @@ async function preview(forSave) {
     const url = URL.createObjectURL(doc.output('blob'));
     lastPreviewUrl = url;
     $('modal-frame').src = url;
-    $('modal-title').textContent = forSave ? 'Bitte prüfen, dann speichern' : 'Vorschau';
+    $('modal-title').textContent = tr(forSave ? 'Bitte prüfen, dann speichern' : 'Vorschau');
     $('modal-save').hidden = !forSave;
     $('modal').hidden = false;
     msg('', '');
@@ -691,7 +696,7 @@ async function renderList() {
   const all = await Store.allReports();
   if (!all.length) box.appendChild(el('p', { class: 'muted', text: 'Noch nichts gespeichert.' }));
   all.forEach(rep => {
-    const title = `${isoToDe(rep.datum)}  ${rep.projekt || '(ohne Projekt)'}`;
+    const title = `${isoToDe(rep.datum)}  ${rep.projekt || tr('(ohne Projekt)')}`;
     box.appendChild(el('div', { class: 'list-row' }, [
       el('span', { class: 'tag', text: rep.type === 'punch' ? 'Punchliste' : 'Bericht' }),
       el('span', { class: 't', text: title + (rep.lang === 'en' ? '  (EN)' : '') }),
@@ -760,9 +765,9 @@ function renderSettings() {
   $('s-model').value = s.model || '';
   $('logo-img').hidden = !s.logo; if (s.logo) $('logo-img').src = s.logo;
   $('sig-prev').hidden = !s.signature; if (s.signature) $('sig-prev').src = s.signature;
-  $('folder-info').textContent = Folder.supported()
+  $('folder-info').textContent = tr(Folder.supported()
     ? 'Fertige Berichte werden direkt in diesen Ordner geschrieben. Wähle am besten deinen OneDrive-Ordner für Montageberichte.'
-    : 'Dieser Browser kann nicht direkt in einen Ordner speichern. Die Dateien landen im Download-Ordner (Edge oder Chrome am Laptop nehmen).';
+    : 'Dieser Browser kann nicht direkt in einen Ordner speichern. Die Dateien landen im Download-Ordner (Edge oder Chrome am Laptop nehmen).');
   $('btn-folder').hidden = !Folder.supported();
   if (Folder.supported()) Store.getKv('folder').then(h => { if (h) $('folder-info').textContent += ' Aktuell: ' + h.name; });
 }
@@ -774,8 +779,8 @@ function bindSettings() {
     s.firmaName = $('s-firma').value.trim() || 'Chairkit Fördertechnik GmbH';
     s.apiKey = $('s-key').value.trim();
     s.model = $('s-model').value.trim() || 'claude-sonnet-5-5';
-    try { await Settings.save(); applyKiMode(); $('s-msg').textContent = 'Gespeichert.'; }
-    catch (e) { $('s-msg').textContent = 'Speichern nicht möglich: ' + e.message; }
+    try { await Settings.save(); applyKiMode(); $('s-msg').textContent = tr('Gespeichert.'); }
+    catch (e) { $('s-msg').textContent = tr('Speichern nicht möglich: ' + e.message); }
     setTimeout(() => { $('s-msg').textContent = ''; }, 3500);
   });
   $('s-logo').addEventListener('change', async ev => {
