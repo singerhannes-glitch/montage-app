@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Montage-App</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Montage">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+<header class="top">
+  <h1>Montage-App</h1>
+  <nav id="tabs">
+    <button data-tab="bericht" class="active">Montagebericht</button>
+    <button data-tab="punch">Punchliste</button>
+    <button data-tab="liste">Gespeichert</button>
+    <button data-tab="settings">Einstellungen</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Editor für Bericht und Punchliste -->
+  <section id="view-editor" class="view">
+    <div class="toolbar">
+      <label>Sprache des Berichts
+        <select id="lang"><option value="de">Deutsch</option><option value="en">English</option></select>
+      </label>
+      <button id="btn-new" class="ghost">Neu</button>
+      <button id="btn-copy" class="ghost" title="Kopf, Hilfsmittel, Team und geplante Arbeiten übernehmen">Neuer Tag aus diesem</button>
+      <label class="ki-only">Diktat-Sprache
+        <select id="dict-lang"><option value="de-AT">Deutsch</option><option value="en-GB">English</option></select>
+      </label>
+      <span id="autosave" class="muted"></span>
+    </div>
+
+    <div class="card">
+      <div class="projectbar">
+        <label>Gespeichertes Projekt wählen<select id="p-select"><option value="">Neues Projekt: unten eintragen</option></select></label>
+        <button class="small ghost" id="p-del" title="Das gewählte Projekt aus der Liste entfernen">Projekt vergessen</button>
+      </div>
+      <p class="muted" id="p-hint">Firma und Projekt gibst du nur einmal ein. Danach wählst du das Projekt aus der Liste. Das Datum nehme ich aus deinen Fotos.</p>
+      <div class="grid4">
+        <label>Firma (Kunde)<input id="f-firma"></label>
+        <label>Projekt<input id="f-projekt" placeholder="z. B. P2413 Liseberg"></label>
+        <label>Monteur<input id="f-monteur"></label>
+        <label>Datum<input id="f-datum" type="date"></label>
+      </div>
+    </div>
+
+    <div id="part-bericht">
+      <div class="card two">
+        <div>
+          <h3>Montagehilfsmittel</h3>
+          <div id="t-hilfsmittel"></div>
+          <button class="small ghost" id="add-hm">+ Zeile</button>
+        </div>
+        <div>
+          <h3>Einsatzteam</h3>
+          <div id="t-team"></div>
+          <button class="small ghost" id="add-team">+ Zeile</button>
+        </div>
+      </div>
+      <div class="card">
+        <label>Wetter<input id="f-wetter" placeholder="z. B. Sonne, 12 °C"></label>
+        <div id="wetter-orig" class="item" hidden></div>
+      </div>
+
+      <div class="card">
+        <h3 data-l="s1">1. Durchgeführte Tätigkeiten</h3>
+        <div id="l-taetigkeiten"></div>
+        <div class="row-actions"><button class="small ghost" data-add="taetigkeiten">+ Zeile</button><button class="small ghost mic ki-only" data-mic="taetigkeiten">🎤 Diktat</button></div>
+      </div>
+      <div class="card">
+        <h3 data-l="s2">2. Geplante Arbeiten</h3>
+        <div id="l-geplant"></div>
+        <div class="row-actions"><button class="small ghost" data-add="geplant">+ Zeile</button><button class="small ghost mic ki-only" data-mic="geplant">🎤 Diktat</button></div>
+      </div>
+      <div class="card">
+        <h3 data-l="s3">3. Offene Punkte / Technische Hinweise</h3>
+        <div id="l-hinweise"></div>
+        <div class="row-actions"><button class="small ghost" data-add="hinweise">+ Zeile</button><button class="small ghost mic ki-only" data-mic="hinweise">🎤 Diktat</button></div>
+      </div>
+    </div>
+
+    <div id="part-punch" hidden>
+      <div class="card">
+        <h3>1. Punkte</h3>
+        <div id="l-punkte"></div>
+        <div class="row-actions">
+          <button class="small ghost" data-add="punkte">+ Punkt</button>
+          <button class="small ghost mic ki-only" data-mic="punkte">🎤 Diktat</button>
+          <button class="small ghost" id="btn-import-punkte">Offene Punkte aus Berichten übernehmen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 id="h-bilder">Bilder</h3>
+      <div id="l-bilder" class="bilder"></div>
+      <label class="filebtn">+ Bilder hinzufügen<input id="in-bilder" type="file" accept="image/*" multiple hidden></label>
+    </div>
+
+    <div class="card">
+      <div class="grid4">
+        <label>Stand (Datum)<input id="f-stand" type="date"></label>
+        <div class="sigpreview"><span class="muted">Unterschrift</span><img id="sig-img" alt="" hidden><span id="sig-none" class="muted">Noch keine hinterlegt (Einstellungen)</span></div>
+      </div>
+    </div>
+
+    <div class="card actions">
+      <button id="btn-polish" class="primary ki-only">✨ Professionell formulieren</button>
+      <button id="btn-preview" class="ghost">Vorschau (PDF)</button>
+      <button id="btn-save" class="primary green">Prüfen und speichern: Excel + PDF</button>
+      <div id="msg" class="msg" role="status"></div>
+      <div id="notes" class="notes"></div>
+    </div>
+  </section>
+
+  <!-- Gespeicherte Berichte -->
+  <section id="view-liste" class="view" hidden>
+    <div class="card">
+      <h3>Gespeicherte Entwürfe</h3>
+      <div id="list"></div>
+      <div class="row-actions">
+        <button class="small ghost" id="btn-export-all">Sicherung exportieren (JSON)</button>
+        <label class="filebtn small">Sicherung importieren<input id="in-import" type="file" accept=".json" hidden></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Einstellungen -->
+  <section id="view-settings" class="view" hidden>
+    <div class="card">
+      <h3>Persönliches</h3>
+      <div class="grid2">
+        <label>Dein Name (Monteur)<input id="s-monteur"></label>
+        <label>Firmenname im Kopf<input id="s-firma"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Logo und Unterschrift</h3>
+      <div class="grid2">
+        <div>
+          <label class="filebtn">Logo auswählen<input id="s-logo" type="file" accept="image/*" hidden></label>
+          <div><img id="logo-img" class="prev" alt="" hidden></div>
+          <button class="small ghost" id="logo-del">Logo entfernen</button>
+        </div>
+        <div>
+          <label class="filebtn">Unterschrift als Bild<input id="s-sig" type="file" accept="image/*" hidden></label>
+          <button class="small ghost" id="sig-draw">Unterschrift zeichnen</button>
+          <div><img id="sig-prev" class="prev" alt="" hidden></div>
+          <button class="small ghost" id="sig-del">Unterschrift entfernen</button>
+        </div>
+      </div>
+      <canvas id="sig-canvas" width="500" height="160" hidden></canvas>
+      <div id="sig-tools" hidden>
+        <button class="small ghost" id="sig-clear">Löschen</button>
+        <button class="small primary" id="sig-ok">Übernehmen</button>
+      </div>
+    </div>
+    <div class="card" id="card-ki" hidden>
+      <h3>KI (professionell formulieren, Übersetzung)</h3>
+      <p class="muted">Der API-Schlüssel bleibt nur in diesem Browser gespeichert und wird nie in Berichte oder Dateien geschrieben. Nur auf deinem eigenen Laptop eintragen und im Anthropic-Konto ein Monatslimit setzen.</p>
+      <div class="grid2">
+        <label>API-Schlüssel<input id="s-key" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
+        <label>Modell<input id="s-model"></label>
+      </div>
+      <button class="small ghost" id="btn-test-ai">Verbindung testen</button>
+      <span id="ai-test" class="muted"></span>
+    </div>
+    <div class="card">
+      <h3>Speicherordner (z. B. OneDrive)</h3>
+      <p class="muted" id="folder-info"></p>
+      <button class="small ghost" id="btn-folder">Ordner wählen</button>
+    </div>
+    <div class="card"><button id="btn-settings-save" class="primary">Einstellungen speichern</button> <span id="s-msg" class="muted"></span></div>
+  </section>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><strong id="modal-title">Vorschau</strong><span><button id="modal-save" class="primary green small" hidden>Jetzt speichern (Excel + PDF)</button> <button id="modal-close" class="ghost small">Zurück</button></span></div>
+    <iframe id="modal-frame" title="Vorschau"></iframe>
+  </div>
+</div>
+
+<script src="libs/jspdf.umd.min.js"></script>
+<script src="libs/exceljs.min.js"></script>
+<script src="i18n.js"></script>
+<script src="store.js"></script>
+<script src="ai.js"></script>
+<script src="export-pdf.js"></script>
+<script src="export-xlsx.js"></script>
+<script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register('sw.js').catch(function () { /* ohne Offline-Cache weiter */ });
+}
+</script>
+</body>
+</html>
