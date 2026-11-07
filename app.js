@@ -769,6 +769,7 @@ function renderSettings() {
     ? 'Fertige Berichte werden direkt in diesen Ordner geschrieben. Wähle am besten deinen OneDrive-Ordner für Montageberichte.'
     : 'Dieser Browser kann nicht direkt in einen Ordner speichern. Die Dateien landen im Download-Ordner (Edge oder Chrome am Laptop nehmen).');
   $('btn-folder').hidden = !Folder.supported();
+  $('card-folder').hidden = !Folder.supported(); // Handy: gespeichert wird über „In Dateien sichern“, dort gibt es OneDrive
   if (Folder.supported()) Store.getKv('folder').then(h => { if (h) $('folder-info').textContent += ' Aktuell: ' + h.name; });
 }
 
