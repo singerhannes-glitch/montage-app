@@ -34,6 +34,7 @@ function msg(text, kind) {
 // ---------- Speichern im Browser ----------
 function touch() {
   R.updated = Date.now();
+  if (pendingShare) { pendingShare = null; $('btn-share').hidden = true; } // geaenderter Bericht: alte Dateien nicht mehr anbieten
   $('autosave').textContent = 'Änderungen …';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
@@ -603,6 +604,33 @@ async function freeName(dir, base) {
   return name;
 }
 
+// iPhone/iPad: Dateien ueber das Teilen-Menue in "Dateien" sichern (Excel und PDF zusammen in einem Schritt).
+// Safari erlaubt das Teilen nur direkt nach einem Fingertipp, darum gibt es nach dem Erstellen einen eigenen Knopf.
+let pendingShare = null;
+const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+async function shareFiles() {
+  if (!pendingShare) return;
+  const { xlsx, pdf, base } = pendingShare;
+  const files = [
+    new File([xlsx], base + '.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+    new File([pdf], base + '.pdf', { type: 'application/pdf' })
+  ];
+  try {
+    if (navigator.canShare && navigator.canShare({ files })) {
+      await navigator.share({ files, title: base });
+      msg('Geteilt. Wenn du „In Dateien sichern“ gewählt und einen Ordner bestätigt hast, liegen ' + base + '.xlsx und ' + base + '.pdf dort.', 'ok');
+    } else {
+      downloadBlob(xlsx, base + '.xlsx');
+      setTimeout(() => downloadBlob(pdf, base + '.pdf'), 400);
+      msg('Teilen wird hier nicht unterstützt. Die Dateien wurden heruntergeladen: ' + base + '.xlsx und ' + base + '.pdf.', 'ok');
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') msg('Abgebrochen. Tippe noch einmal auf „In Dateien sichern“, wenn du die Dateien speichern willst.', '');
+    else msg('Teilen fehlgeschlagen: ' + (e && e.message ? e.message : e), 'err');
+  }
+}
+
 async function saveFiles() {
   const btn = $('modal-save');
   btn.disabled = true;
@@ -623,6 +651,15 @@ async function saveFiles() {
     let base = reportFileBase(c);
     let where = '';
     let xlsxDone = false, pdfDone = false;
+    if (isIos()) {
+      pendingShare = { xlsx, pdf, base };
+      $('btn-share').hidden = false;
+      let warn = '';
+      try { await Store.saveReport(R); } catch (e) { warn = ' Hinweis: Der Entwurf selbst konnte im Browser nicht gespeichert werden.'; }
+      try { await rememberProject(); } catch (e) { /* ignorieren */ }
+      msg('Excel und PDF sind fertig (' + base + '). Tippe jetzt unten auf „In Dateien sichern“ und wähle im Menü „In Dateien sichern“.' + warn, warn ? 'err' : 'ok');
+      return;
+    }
     if (dir) {
       try {
         base = await freeName(dir, base);
@@ -792,6 +829,7 @@ async function init() {
   }
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => openTab(b.dataset.tab)));
   $('btn-export-all').addEventListener('click', exportAll);
+  $('btn-share').addEventListener('click', shareFiles);
   $('in-import').addEventListener('change', ev => { if (ev.target.files[0]) importAll(ev.target.files[0]); ev.target.value = ''; });
   await loadProjects();
   bindFields();
