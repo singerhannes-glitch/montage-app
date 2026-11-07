@@ -731,7 +731,24 @@ async function importAll(file) {
 function applyKiMode() {
   const has = !!(Settings.data.apiKey || '').trim();
   document.body.classList.toggle('ki', has);
-  $('card-ki').hidden = !(has || location.hash === '#ki');
+  let freigeschaltet = false;
+  try { freigeschaltet = localStorage.getItem('kiBereich') === '1'; } catch (e) { /* ignorieren */ }
+  $('card-ki').hidden = !(has || freigeschaltet || location.hash === '#ki');
+}
+
+// Im Home-Bildschirm-Modus gibt es keine Adresszeile fuer "#ki": 5 Mal schnell auf den Titel "Montage-App" tippen schaltet den Schluessel-Bereich frei.
+function bindKiFreischaltung() {
+  let n = 0, t = null;
+  document.querySelector('.top h1').addEventListener('click', () => {
+    n++; clearTimeout(t); t = setTimeout(() => { n = 0; }, 2500);
+    if (n >= 5) {
+      n = 0;
+      try { localStorage.setItem('kiBereich', '1'); } catch (e) { /* ignorieren */ }
+      applyKiMode();
+      openTab('settings');
+      $('card-ki').scrollIntoView({ behavior: 'smooth' });
+    }
+  });
 }
 
 function renderSettings() {
@@ -835,6 +852,7 @@ async function init() {
   bindFields();
   bindProjects();
   bindSettings();
+  bindKiFreischaltung();
   applyKiMode();
   await openTab('bericht');
   if (!storeOk) msg('Der Speicher im Browser ist nicht verfügbar (privates Fenster?). Entwürfe und Einstellungen bleiben nicht erhalten. Excel und PDF kannst du trotzdem erzeugen.', 'err');
